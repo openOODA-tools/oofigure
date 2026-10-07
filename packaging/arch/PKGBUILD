@@ -1,0 +1,21 @@
+# Maintainer: openOODA-tools <ops@openooda.org>
+pkgname=oofigure-bin
+_pkgname=oofigure
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Renders beautiful Unicode box-drawing tables, callouts, and code borders."
+arch=('x86_64')
+url="https://github.com/openOODA-tools/oofigure"
+license=('Apache-2.0')
+depends=('glibc')
+provides=('oofigure')
+conflicts=('oofigure')
+source_x86_64=("${url}/releases/download/v${pkgver}/oofigure-linux-x86_64"
+               "uninstall.sh::https://raw.githubusercontent.com/openOODA-tools/${_pkgname}/v${pkgver}/uninstall.sh")
+sha256sums_x86_64=('SKIP'
+                   'SKIP')
+
+package() {
+    install -Dm755 "${srcdir}/oofigure-linux-x86_64" "${pkgdir}/usr/bin/oofigure"
+    install -Dm755 uninstall.sh "${pkgdir}/usr/bin/oofigure-uninstall"
+}
