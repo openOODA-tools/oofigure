@@ -1,0 +1,106 @@
+// # POSIX CLI Option Parser
+//
+// Logline: Option parsing and dispatch mapping box figure parameters and format flags.
+//
+// Setup: Pure argument scanning and option structure assembly with zero ambient authority.
+//
+// Beats:
+//   1. Declare FigureOpts configuration structure.
+//   2. Parse style, title, callout, and alignment switches.
+//   3. Parse padding, fixed width, and line numbering options.
+//   4. Deliver populated FigureOpts structure for terminal rendering.
+
+import "ipc/json_field.oo";
+
+pub type FigureOpts = struct {
+    show_help: Bool,
+    show_version: Bool,
+    mcp_mode: Bool,
+    test_mode: Bool,
+    demo_mode: Bool,
+    json_mode: Bool,
+    style_name: String,
+    title: String,
+    callout_kind: String,
+    padding: Int,
+    alignment: String,
+    fixed_width: Int,
+    line_numbers: Bool,
+    text_args: List[String]
+};
+
+pub fn default_figure_opts() -> FigureOpts {
+    let empty_args: List[String] = list_new();
+    return FigureOpts {
+        show_help: false,
+        show_version: false,
+        mcp_mode: false,
+        test_mode: false,
+        demo_mode: false,
+        json_mode: false,
+        style_name: "rounded",
+        title: "",
+        callout_kind: "",
+        padding: 1,
+        alignment: "left",
+        fixed_width: 0,
+        line_numbers: false,
+        text_args: empty_args
+    };
+}
+
+pub fn parse_cli_args(args: List[String]) -> FigureOpts {
+    let mut opts: FigureOpts = default_figure_opts();
+    let num_args: Int = list_len(args);
+    let mut i: Int = 0;
+    let mut parsing_flags: Bool = true;
+
+    while i < num_args {
+        let arg: String = list_get(args, i);
+
+        if parsing_flags && (arg == "-h" || arg == "--help") {
+            opts.show_help = true;
+            return opts;
+        } else if parsing_flags && (arg == "-v" || arg == "--version") {
+            opts.show_version = true;
+            return opts;
+        } else if parsing_flags && arg == "--mcp" {
+            opts.mcp_mode = true;
+        } else if parsing_flags && arg == "--test" {
+            opts.test_mode = true;
+        } else if parsing_flags && (arg == "-D" || arg == "--demo") {
+            opts.demo_mode = true;
+        } else if parsing_flags && (arg == "-j" || arg == "--json") {
+            opts.json_mode = true;
+        } else if parsing_flags && arg == "--numbers" {
+            opts.line_numbers = true;
+        } else if parsing_flags && (arg == "-s" || arg == "--style") && i + 1 < num_args {
+            i = i + 1;
+            opts.style_name = list_get(args, i);
+        } else if parsing_flags && (arg == "-t" || arg == "--title") && i + 1 < num_args {
+            i = i + 1;
+            opts.title = list_get(args, i);
+        } else if parsing_flags && (arg == "-c" || arg == "--callout") && i + 1 < num_args {
+            i = i + 1;
+            opts.callout_kind = list_get(args, i);
+        } else if parsing_flags && (arg == "-p" || arg == "--padding") && i + 1 < num_args {
+            i = i + 1;
+            let pad_str: String = list_get(args, i);
+            opts.padding = parse_int_safe(pad_str, 1);
+        } else if parsing_flags && arg == "--align" && i + 1 < num_args {
+            i = i + 1;
+            opts.alignment = list_get(args, i);
+        } else if parsing_flags && (arg == "-w" || arg == "--width") && i + 1 < num_args {
+            i = i + 1;
+            let w_str: String = list_get(args, i);
+            opts.fixed_width = parse_int_safe(w_str, 0);
+        } else if arg == "--" {
+            parsing_flags = false;
+        } else {
+            opts.text_args = list_push(opts.text_args, arg);
+        }
+        i = i + 1;
+    }
+
+    return opts;
+}

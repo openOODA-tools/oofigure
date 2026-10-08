@@ -1,14 +1,10 @@
-Source: oofigure
+Package: oofigure
+Version: 0.2.0-1
 Section: utils
 Priority: optional
-Maintainer: openOODA-tools <ops@openooda.org>
-Standards-Version: 4.6.2
-Build-Depends: debhelper-compat (= 13)
-
-Package: oofigure
 Architecture: amd64
-Depends: libc6
-Description: Sovereign Unicode box-drawing tables, callouts, and code borders
+Maintainer: openOODA-tools <ops@openooda.org>
+Description: Sovereign Unicode box-drawing tables, callouts, and code borders in pure openOODA.
  Renders beautiful Unicode and ASCII box-drawing tables, callouts, and code borders.
  Capability-bounded openOODA utility with zero ambient authority,
  custom border styles, alert boxes, and native Model Context Protocol (MCP) surface.

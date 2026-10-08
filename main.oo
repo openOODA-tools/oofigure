@@ -1,32 +1,30 @@
 // # oofigure Main Entry Point
 //
-// Logline: Renders beautiful Unicode box-drawing tables, callouts, and code borders.
+// Logline: Sovereign box drawing, terminal frames, callouts, and streaming MCP server.
 //
-// Setup: Demands explicit capability tokens and standard argument list.
+// Setup: Demands explicit capability tokens &FsReadCap, &ProcessCap, and &EnvCap under zero ambient authority.
 //
 // Beats:
-//   1. Parse command-line options and dispatch --help, --version, or --mcp.
-//   2. Execute capability-bounded oofigure operations.
-//   3. Format and output structured results to standard output.
+//   1. Parse command-line options and dispatch --help, --version, --test, or --mcp.
+//   2. Route synthetic showcase requests for --demo execution.
+//   3. Ingest text arguments or standard input streams.
+//   4. Format and output bordered figures as text or structured JSON.
 
-fn render_help() -> String {
-    return "oofigure 0.1.0 (openOODA sovereign theme & styling)\n"
-        + "usage: oofigure [options] [ARGUMENTS]...\n\n"
-        + "Renders beautiful Unicode box-drawing tables, callouts, and code borders.\n\n"
-        + "Options:\n"
-        + "  -h, --help           display this help and exit\n"
-        + "  -v, --version        output version information and exit\n"
-        + "      --json           output formatted as JSON Lines\n"
-        + "      --color <WHEN>   colorize output: auto, always, never [default: auto]\n"
-        + "      --theme <NAME>   override active oote palette\n"
-        + "      --mcp            run as Model Context Protocol stdio server\n";
-}
+import "core/box_styles.oo";
+import "core/figure_engine.oo";
+import "core/callout_engine.oo";
+import "render/render_box.oo";
+import "render/render_json.oo";
+import "ipc/cli_options.oo";
+import "ipc/mcp_server.oo";
+import "anchor.oo";
 
-fn render_version() -> String {
-    return "oofigure 0.1.0 (openOODA sovereign theme & styling)\n";
-}
-
-fn main(args: List[String]) -> Int {
+pub fn main(
+    fr: &FsReadCap,
+    _pr: &ProcessCap,
+    _env: &EnvCap,
+    args: List[String]
+) -> Int {
     let num_args: Int = list_len(args);
     let mut i: Int = 0;
 
@@ -40,13 +38,97 @@ fn main(args: List[String]) -> Int {
             print(render_version());
             return 0;
         }
+        if arg == "--test" {
+            if run_all_tests() {
+                print("oofigure: internal anchor tests PASSED\n");
+                return 0;
+            } else {
+                print("oofigure: internal anchor tests FAILED\n");
+                return 1;
+            }
+        }
         if arg == "--mcp" {
-            print("{\"jsonrpc\":\"2.0\",\"result\":{\"status\":\"ready\",\"tool\":\"oofigure\"}}\n");
+            run_mcp_server(fr);
+            return 0;
+        }
+        if arg == "-D" || arg == "--demo" {
+            print(render_demo());
             return 0;
         }
         i = i + 1;
     }
 
-    print("oofigure: sovereign capability-bounded utility ready\n");
+    let opts: FigureOpts = parse_cli_args(args);
+
+    if opts.show_help {
+        print(render_help());
+        return 0;
+    }
+    if opts.show_version {
+        print(render_version());
+        return 0;
+    }
+    if opts.demo_mode {
+        print(render_demo());
+        return 0;
+    }
+
+    let st: BoxStyle = get_box_style(opts.style_name);
+
+    // Collect lines from text_args or standard input
+    let mut input_lines: List[String] = list_new();
+    let num_text_args: Int = list_len(opts.text_args);
+
+    if num_text_args > 0 {
+        let mut t_idx: Int = 0;
+        while t_idx < num_text_args {
+            let t_arg: String = list_get(opts.text_args, t_idx);
+            let arg_lines: List[String] = split_text_lines(t_arg);
+            let a_len: Int = list_len(arg_lines);
+            let mut a_idx: Int = 0;
+            while a_idx < a_len {
+                input_lines = list_push(input_lines, list_get(arg_lines, a_idx));
+                a_idx = a_idx + 1;
+            }
+            t_idx = t_idx + 1;
+        }
+    } else {
+        // Read stdin
+        let r: Result[String, String] = oo_read_stdin_chunk(fr, 65536);
+        let stdin_content: String = if r.is_ok() {
+            match r { Ok(s) => s, Err(_) => "" }
+        } else {
+            ""
+        };
+        if chars_len(stdin_content) > 0 {
+            input_lines = split_text_lines(str_trim(stdin_content));
+        } else {
+            input_lines = list_push(input_lines, "oofigure: sovereign capability-bounded utility ready");
+        }
+    }
+
+    let rendered: String = if chars_len(opts.callout_kind) > 0 {
+        let meta: CalloutMeta = get_callout_meta(opts.callout_kind);
+        render_callout(input_lines, meta, st)
+    } else {
+        render_box(
+            input_lines,
+            st,
+            opts.title,
+            opts.padding,
+            opts.alignment,
+            opts.fixed_width,
+            opts.line_numbers
+        )
+    };
+
+    if opts.json_mode {
+        let n_lines: Int = list_len(input_lines);
+        let max_w: Int = max_line_width(input_lines);
+        print(render_figure_json(rendered, opts.style_name, max_w, n_lines));
+    } else {
+        print(rendered);
+    }
+
     return 0;
 }

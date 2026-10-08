@@ -1,0 +1,85 @@
+// # Core Subsystem Anchor
+//
+// Logline: Unit tests for box drawing styles, spatial alignment, and callout descriptors.
+//
+// Setup: Pure verification of core geometries without disk or terminal I/O.
+//
+// Beats:
+//   1. Verify box style resolution and glyph integrity.
+//   2. Verify line splitting and maximum width calculations.
+//   3. Verify text line alignment and padding routines.
+//   4. Verify callout alert metadata and badge generation.
+
+import "core/box_styles.oo";
+import "core/figure_engine.oo";
+import "core/callout_engine.oo";
+
+fn test_box_styles() -> Bool {
+    let s_rnd: BoxStyle = get_box_style("rounded");
+    if s_rnd.top_left != "╭" || s_rnd.bot_right != "╯" {
+        return false;
+    }
+    let s_dbl: BoxStyle = get_box_style("double");
+    if s_dbl.top_left != "╔" || s_dbl.bot_right != "╝" {
+        return false;
+    }
+    let s_asc: BoxStyle = get_box_style("ascii");
+    if s_asc.top_left != "+" || s_asc.horizontal != "-" {
+        return false;
+    }
+    let names: List[String] = list_style_names();
+    if list_len(names) != 5 {
+        return false;
+    }
+    return true;
+}
+
+fn test_figure_geometry() -> Bool {
+    let rep: String = repeat_glyph("─", 4);
+    if rep != "────" {
+        return false;
+    }
+    let multiline: String = "alpha\nbeta\ngamma";
+    let lines: List[String] = split_text_lines(multiline);
+    if list_len(lines) != 3 {
+        return false;
+    }
+    let max_w: Int = max_line_width(lines);
+    if max_w != 5 {
+        return false;
+    }
+    let aligned_center: String = align_text_line("hi", 6, "center");
+    if chars_len(aligned_center) != 6 {
+        return false;
+    }
+    return true;
+}
+
+fn test_callout_meta() -> Bool {
+    let note: CalloutMeta = get_callout_meta("note");
+    if note.badge != "NOTE" {
+        return false;
+    }
+    let warn: CalloutMeta = get_callout_meta("warning");
+    if warn.badge != "WARNING" {
+        return false;
+    }
+    let title: String = format_callout_title(warn);
+    if chars_len(title) == 0 {
+        return false;
+    }
+    return true;
+}
+
+pub fn run_core_tests() -> Bool {
+    if !test_box_styles() {
+        return false;
+    }
+    if !test_figure_geometry() {
+        return false;
+    }
+    if !test_callout_meta() {
+        return false;
+    }
+    return true;
+}

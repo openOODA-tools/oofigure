@@ -1,0 +1,125 @@
+// # Box Drawing Styles Subsystem
+//
+// Logline: Border geometry presets, glyph definitions, and style catalog.
+//
+// Setup: Pure character glyph definitions supporting Unicode box-drawing standards and ASCII fallbacks.
+//
+// Beats:
+//   1. Declare BoxStyle geometric glyph structure.
+//   2. Define rounded, single, double, heavy, and ASCII border styles.
+//   3. Resolve box style by name with graceful fallback to rounded.
+//   4. Expose catalog of available style identifiers.
+
+pub type BoxStyle = struct {
+    name: String,
+    top_left: String,
+    top_right: String,
+    bot_left: String,
+    bot_right: String,
+    horizontal: String,
+    vertical: String,
+    tee_left: String,
+    tee_right: String,
+    cross: String
+};
+
+pub fn style_rounded() -> BoxStyle {
+    return BoxStyle {
+        name: "rounded",
+        top_left: "╭",
+        top_right: "╮",
+        bot_left: "╰",
+        bot_right: "╯",
+        horizontal: "─",
+        vertical: "│",
+        tee_left: "├",
+        tee_right: "┤",
+        cross: "┼"
+    };
+}
+
+pub fn style_single() -> BoxStyle {
+    return BoxStyle {
+        name: "single",
+        top_left: "┌",
+        top_right: "┐",
+        bot_left: "└",
+        bot_right: "┘",
+        horizontal: "─",
+        vertical: "│",
+        tee_left: "├",
+        tee_right: "┤",
+        cross: "┼"
+    };
+}
+
+pub fn style_double() -> BoxStyle {
+    return BoxStyle {
+        name: "double",
+        top_left: "╔",
+        top_right: "╗",
+        bot_left: "╚",
+        bot_right: "╝",
+        horizontal: "═",
+        vertical: "║",
+        tee_left: "╠",
+        tee_right: "╣",
+        cross: "╬"
+    };
+}
+
+pub fn style_heavy() -> BoxStyle {
+    return BoxStyle {
+        name: "heavy",
+        top_left: "┏",
+        top_right: "┓",
+        bot_left: "┗",
+        bot_right: "┛",
+        horizontal: "━",
+        vertical: "┃",
+        tee_left: "┣",
+        tee_right: "┫",
+        cross: "╋"
+    };
+}
+
+pub fn style_ascii() -> BoxStyle {
+    return BoxStyle {
+        name: "ascii",
+        top_left: "+",
+        top_right: "+",
+        bot_left: "+",
+        bot_right: "+",
+        horizontal: "-",
+        vertical: "|",
+        tee_left: "+",
+        tee_right: "+",
+        cross: "+"
+    };
+}
+
+pub fn get_box_style(name: String) -> BoxStyle {
+    if name == "single" {
+        return style_single();
+    }
+    if name == "double" {
+        return style_double();
+    }
+    if name == "heavy" {
+        return style_heavy();
+    }
+    if name == "ascii" {
+        return style_ascii();
+    }
+    return style_rounded();
+}
+
+pub fn list_style_names() -> List[String] {
+    let mut names: List[String] = list_new();
+    names = list_push(names, "rounded");
+    names = list_push(names, "single");
+    names = list_push(names, "double");
+    names = list_push(names, "heavy");
+    names = list_push(names, "ascii");
+    return names;
+}

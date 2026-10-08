@@ -1,9 +1,9 @@
 # Maintainer: openOODA-tools <ops@openooda.org>
 pkgname=oofigure-bin
 _pkgname=oofigure
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc="Renders beautiful Unicode box-drawing tables, callouts, and code borders."
+pkgdesc="Sovereign Unicode box-drawing tables, callouts, and code borders in pure openOODA"
 arch=('x86_64')
 url="https://github.com/openOODA-tools/oofigure"
 license=('Apache-2.0')

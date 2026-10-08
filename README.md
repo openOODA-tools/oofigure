@@ -9,7 +9,7 @@
 ================================================================================
 ```
 
-**Sovereign BOX DRAWING**  
+**Sovereign BOX DRAWING & Terminal Geometry Engine**  
 *Renders beautiful Unicode box-drawing tables, callouts, and code borders.*  
 *Two Faces, One Engine:* Modern terminal ergonomics for humans • Zero-leakage MCP for AI agents  
 Written in 100% pure [openOODA](https://github.com/openOODA).
@@ -54,32 +54,38 @@ oofigure-uninstall
 ## 2. CLI Usage
 
 ```
-usage: oofigure [options] [ARGUMENTS]...
+usage: oofigure [options] [TEXT...]
 
 Renders beautiful Unicode box-drawing tables, callouts, and code borders.
 
 Options:
-  -h, --help           display this help and exit
-  -v, --version        output version information and exit
-      --json           output formatted as JSON Lines
-      --color <WHEN>   colorize output: auto, always, never [default: auto]
-      --theme <NAME>   override active oote palette
-      --mcp            run as Model Context Protocol stdio server
+  -s, --style <STYLE>   border style: rounded, single, double, heavy, ascii [default: rounded]
+  -t, --title <TITLE>   embed title into top border bar
+  -c, --callout <TYPE>  format as GFM alert: note, tip, important, warning, caution
+  -p, --padding <N>     inner horizontal padding in columns [default: 1]
+      --align <ALIGN>   text alignment: left, center, right [default: left]
+      --numbers         prepend line numbers inside panel
+  -w, --width <N>       fixed outer width (0 = auto-fit to content)
+  -j, --json            output figure geometry and lines as JSON
+  -D, --demo            render multi-style showcase and alert gallery
+      --test            execute internal subsystem verification suite
+      --mcp             run as Model Context Protocol JSON-RPC stdio server
+  -h, --help            display this help and exit
+  -v, --version         output version information and exit
 ```
 
 ---
 
-## 3. Theming Integration (`oote`)
-
-`oofigure` synchronizes visual styles and status colors with [oote](https://github.com/openOODA-tools/oote):
-* **Configuration:** Reads active palette from `~/.openooda/theme.oot`.
-* **Environment Overrides:** Respects `$OODA_THEME` and `$NO_COLOR`.
-
----
-
-## 4. Model Context Protocol (MCP)
+## 3. Model Context Protocol (MCP)
 
 When invoked with `--mcp`, `oofigure` runs a JSON-RPC 2.0 stdio server providing structured tools for AI coding agents:
+
+* `figure_box`: Draws a bordered box around text with custom style, title, padding, and alignment.
+* `figure_callout`: Formats a GitHub/GFM alert callout box (`note`, `tip`, `important`, `warning`, `caution`).
+* `figure_code`: Formats a code block panel with line numbers and title.
+* `figure_table`: Formats a multi-column grid table from comma-separated rows.
+* `figure_styles`: Lists supported border styles and glyph definitions.
+* `figure_demo`: Runs interactive box drawing and callout showcase.
 
 ```bash
 oofigure --mcp
@@ -87,14 +93,14 @@ oofigure --mcp
 
 ---
 
-## 5. Security & Zero Ambient Authority
+## 4. Security & Zero Ambient Authority
 
-* **Pure Capability Bounded:** Operates strictly with explicit tokens (&TermCap, &EnvCap, &McpCap). Physical absence of ambient disk/net leakage.
+* **Pure Capability Bounded:** Operates strictly with explicit tokens (`&FsReadCap`, `&ProcessCap`, `&EnvCap`). Physical absence of ambient disk/net leakage.
 * **Negative-Trust Architecture:** Strict input validation and operational limits.
 * **Hermetic Binary:** Standalone zero-dependency executable.
 
 ---
 
-## 6. License
+## 5. License
 
 Apache License, Version 2.0. See [LICENSE](LICENSE) for details.

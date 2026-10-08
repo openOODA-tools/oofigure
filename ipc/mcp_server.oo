@@ -1,0 +1,180 @@
+// # Streaming MCP Server for Box Drawing
+//
+// Logline: JSON-RPC 2.0 stdio server providing sovereign box drawing, tables, callouts, and code borders.
+//
+// Setup: Bridges standard input/output streaming protocol to box drawing engines and table formatters.
+//
+// Beats:
+//   1. Handle MCP initialize handshake with server metadata and capability declarations.
+//   2. Expose tools/list catalogue with six sovereign figure tools.
+//   3. Dispatch tools/call for figure_box, figure_callout, figure_code, figure_table, styles, and demo.
+//   4. Deliver streaming JSON-RPC responses over standard output.
+
+import "core/box_styles.oo";
+import "core/figure_engine.oo";
+import "core/callout_engine.oo";
+import "render/render_box.oo";
+import "render/render_table.oo";
+import "render/render_json.oo";
+import "ipc/json_field.oo";
+
+fn build_error(id: String, code: Int, msg: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"error\":{\"code\":"
+        + code.to_string() + ",\"message\":\"" + json_escape(msg) + "\"}}\n";
+}
+
+fn build_tool_result(id: String, text: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\""
+        + json_escape(text) + "\"}]}}\n";
+}
+
+pub fn render_mcp_init(id: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id
+        + ",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"oofigure\",\"version\":\"0.2.0\"}}}\n";
+}
+
+pub fn render_mcp_tools_list(id: String) -> String {
+    let mut out: String = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"tools\":[";
+    out = out + "{\"name\":\"figure_box\",\"description\":\"Draws a bordered box around text with custom style, title, padding, and alignment.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"},\"style\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"padding\":{\"type\":\"integer\"},\"align\":{\"type\":\"string\"},\"width\":{\"type\":\"integer\"},\"line_numbers\":{\"type\":\"boolean\"}}}}";
+    out = out + ",{\"name\":\"figure_callout\",\"description\":\"Formats a GitHub/GFM alert callout box (note, tip, important, warning, caution).\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"style\":{\"type\":\"string\"}}}}";
+    out = out + ",{\"name\":\"figure_code\",\"description\":\"Formats a code block panel with line numbers and title.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"code\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"language\":{\"type\":\"string\"},\"style\":{\"type\":\"string\"}}}}";
+    out = out + ",{\"name\":\"figure_table\",\"description\":\"Formats a multi-column grid table from comma-separated rows.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"string\"},\"style\":{\"type\":\"string\"}}}}";
+    out = out + ",{\"name\":\"figure_styles\",\"description\":\"Lists supported border styles and glyph definitions.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}";
+    out = out + ",{\"name\":\"figure_demo\",\"description\":\"Runs interactive box drawing and callout showcase.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}";
+    out = out + "]}}\n";
+    return out;
+}
+
+pub fn handle_mcp_call(id: String, tool_name: String, req: String) -> String {
+    if tool_name == "figure_demo" {
+        return build_tool_result(id, render_demo());
+    }
+
+    if tool_name == "figure_styles" {
+        return build_tool_result(id, render_styles_list_json());
+    }
+
+    if tool_name == "figure_box" {
+        let text_raw: String = json_extract_str_field(req, "text");
+        let st_name: String = json_extract_str_field(req, "style");
+        let title: String = json_extract_str_field(req, "title");
+        let padding: Int = json_extract_int_field(req, "padding", 1);
+        let align: String = json_extract_str_field(req, "align");
+        let align_val: String = if chars_len(align) > 0 { align } else { "left" };
+        let width_val: Int = json_extract_int_field(req, "width", 0);
+        let num_flag: Bool = json_extract_bool_field(req, "line_numbers", false);
+
+        let st: BoxStyle = get_box_style(st_name);
+        let lines: List[String] = split_text_lines(text_raw);
+        let boxed: String = render_box(lines, st, title, padding, align_val, width_val, num_flag);
+        return build_tool_result(id, boxed);
+    }
+
+    if tool_name == "figure_callout" {
+        let text_raw: String = json_extract_str_field(req, "text");
+        let kind: String = json_extract_str_field(req, "kind");
+        let st_name: String = json_extract_str_field(req, "style");
+        let meta: CalloutMeta = get_callout_meta(kind);
+        let st: BoxStyle = get_box_style(st_name);
+        let lines: List[String] = split_text_lines(text_raw);
+        let out: String = render_callout(lines, meta, st);
+        return build_tool_result(id, out);
+    }
+
+    if tool_name == "figure_code" {
+        let code_raw: String = json_extract_str_field(req, "code");
+        let title: String = json_extract_str_field(req, "title");
+        let lang: String = json_extract_str_field(req, "language");
+        let st_name: String = json_extract_str_field(req, "style");
+        let banner: String = if chars_len(lang) > 0 { title + " [" + lang + "]" } else { title };
+        let st: BoxStyle = get_box_style(st_name);
+        let lines: List[String] = split_text_lines(code_raw);
+        let out: String = render_box(lines, st, banner, 1, "left", 0, true);
+        return build_tool_result(id, out);
+    }
+
+    if tool_name == "figure_table" {
+        let rows_raw: String = json_extract_str_field(req, "rows");
+        let st_name: String = json_extract_str_field(req, "style");
+        let st: BoxStyle = get_box_style(st_name);
+        let lines: List[String] = split_text_lines(rows_raw);
+        let out: String = render_table(lines, st);
+        return build_tool_result(id, out);
+    }
+
+    return build_error(id, -32601, "Method or tool not found: " + tool_name);
+}
+
+pub fn handle_mcp_message(req: String) -> String {
+    let id_str: String = json_extract_str_field(req, "id");
+    let id_int: Int = json_extract_int_field(req, "id", -1);
+    let id: String = if chars_len(id_str) > 0 {
+        "\"" + id_str + "\""
+    } else if id_int >= 0 {
+        id_int.to_string()
+    } else {
+        "1"
+    };
+    let method: String = json_extract_str_field(req, "method");
+
+    if method == "initialize" {
+        return render_mcp_init(id);
+    }
+    if method == "notifications/initialized" {
+        return "";
+    }
+    if method == "tools/list" {
+        return render_mcp_tools_list(id);
+    }
+    if method == "tools/call" {
+        let tool_name: String = json_extract_str_field(req, "name");
+        return handle_mcp_call(id, tool_name, req);
+    }
+    if method == "shutdown" {
+        return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":null}\n";
+    }
+    return build_error(id, -32601, "Method not found: " + method);
+}
+
+fn find_newline_pos(s: String) -> Int {
+    let n: Int = chars_len(s);
+    let mut i: Int = 0;
+    while i < n {
+        if byte_at(s, i) == 10 {
+            return i;
+        }
+        i = i + 1;
+    }
+    return -1;
+}
+
+pub fn run_mcp_server(fr: &FsReadCap) {
+    let mut buf: String = "";
+    let mut running: Bool = true;
+    while running {
+        let r: Result[String, String] = oo_read_stdin_chunk(fr, 4096);
+        if !r.is_ok() {
+            running = false;
+        } else {
+            let chunk: String = match r { Ok(s) => s, Err(_) => "" };
+            if chars_len(chunk) == 0 {
+                running = false;
+            } else {
+                buf = buf + chunk;
+                let mut nl_pos: Int = find_newline_pos(buf);
+                while nl_pos >= 0 {
+                    let line: String = str_slice(buf, 0, nl_pos);
+                    buf = str_slice(buf, nl_pos + 1, chars_len(buf));
+                    let trimmed: String = str_trim(line);
+                    if chars_len(trimmed) > 0 {
+                        let resp: String = handle_mcp_message(trimmed);
+                        if chars_len(resp) > 0 {
+                            print(resp);
+                        }
+                    }
+                    nl_pos = find_newline_pos(buf);
+                }
+            }
+        }
+    }
+}

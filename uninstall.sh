@@ -4,7 +4,7 @@
 # "Removes oofigure binary, package installations, and cache."
 #
 # Usage:
-#   curl -fsSL https://openooda-toofigure.github.io/oofigure/uninstall.sh | bash
+#   curl -fsSL https://openooda-tools.github.io/oofigure/uninstall.sh | bash
 #   or: ./uninstall.sh [options]
 #
 # Options:

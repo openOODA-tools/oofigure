@@ -1,0 +1,89 @@
+// # Render Subsystem Anchor
+//
+// Logline: Unit tests for box frames, grid tables, callout panels, and JSON serialization.
+//
+// Setup: Pure verification of rendering output layouts without terminal side-effects.
+//
+// Beats:
+//   1. Verify box border frame construction and title integration.
+//   2. Verify callout alert formatting and icon badges.
+//   3. Verify multi-column grid table rendering and cell padding.
+//   4. Verify JSON payload generation for figures and styles.
+
+import "core/box_styles.oo";
+import "core/callout_engine.oo";
+import "render/render_box.oo";
+import "render/render_table.oo";
+import "render/render_json.oo";
+
+fn str_contains(s: String, needle: String) -> Bool {
+    let n_len: Int = chars_len(needle);
+    let s_len: Int = chars_len(s);
+    if n_len > s_len {
+        return false;
+    }
+    let mut i: Int = 0;
+    while i + n_len <= s_len {
+        if str_slice(s, i, i + n_len) == needle {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+fn test_render_box_output() -> Bool {
+    let mut lines: List[String] = list_new();
+    lines = list_push(lines, "hello world");
+    let boxed: String = render_box(lines, style_rounded(), "Greetings", 1, "left", 0, false);
+    if !str_contains(boxed, "╭─ Greetings") {
+        return false;
+    }
+    if !str_contains(boxed, "hello world") {
+        return false;
+    }
+    if !str_contains(boxed, "╰") {
+        return false;
+    }
+    return true;
+}
+
+fn test_render_table_output() -> Bool {
+    let mut rows: List[String] = list_new();
+    rows = list_push(rows, "ID, Name, Role");
+    rows = list_push(rows, "1, Alice, Engineer");
+    rows = list_push(rows, "2, Bob, Architect");
+    let tbl: String = render_table(rows, style_rounded());
+    if !str_contains(tbl, "Alice") || !str_contains(tbl, "Architect") {
+        return false;
+    }
+    if !str_contains(tbl, "┬") || !str_contains(tbl, "┼") {
+        return false;
+    }
+    return true;
+}
+
+fn test_render_json_output() -> Bool {
+    let json_fig: String = render_figure_json("test", "rounded", 20, 1);
+    if !str_contains(json_fig, "\"style\": \"rounded\"") {
+        return false;
+    }
+    let json_styles: String = render_styles_list_json();
+    if !str_contains(json_styles, "\"heavy\"") {
+        return false;
+    }
+    return true;
+}
+
+pub fn run_render_tests() -> Bool {
+    if !test_render_box_output() {
+        return false;
+    }
+    if !test_render_table_output() {
+        return false;
+    }
+    if !test_render_json_output() {
+        return false;
+    }
+    return true;
+}

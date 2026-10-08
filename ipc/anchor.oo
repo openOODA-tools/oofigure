@@ -1,0 +1,103 @@
+// # IPC Subsystem Anchor
+//
+// Logline: Unit tests for JSON extraction, CLI options parsing, and MCP message dispatch.
+//
+// Setup: Pure verification of JSON parsing and protocol handling without socket or disk I/O.
+//
+// Beats:
+//   1. Verify JSON token scanning and field extraction.
+//   2. Verify CLI argument parsing for flags, titles, and padding.
+//   3. Verify MCP message handler dispatching for initialize, list, and calls.
+
+import "ipc/json_field.oo";
+import "ipc/cli_options.oo";
+import "ipc/mcp_server.oo";
+
+fn str_contains(s: String, needle: String) -> Bool {
+    let n_len: Int = chars_len(needle);
+    let s_len: Int = chars_len(s);
+    if n_len > s_len {
+        return false;
+    }
+    let mut i: Int = 0;
+    while i + n_len <= s_len {
+        if str_slice(s, i, i + n_len) == needle {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+fn test_json_parsing() -> Bool {
+    let raw: String = "{\"style\":\"double\",\"padding\":2,\"enabled\":true}";
+    let st: String = json_extract_str_field(raw, "style");
+    if st != "double" {
+        return false;
+    }
+    let pad: Int = json_extract_int_field(raw, "padding", 0);
+    if pad != 2 {
+        return false;
+    }
+    let en: Bool = json_extract_bool_field(raw, "enabled", false);
+    if !en {
+        return false;
+    }
+    return true;
+}
+
+fn test_cli_parsing() -> Bool {
+    let mut args: List[String] = list_new();
+    args = list_push(args, "-s");
+    args = list_push(args, "heavy");
+    args = list_push(args, "-t");
+    args = list_push(args, "Alert");
+    args = list_push(args, "--numbers");
+
+    let opts: FigureOpts = parse_cli_args(args);
+    if opts.style_name != "heavy" {
+        return false;
+    }
+    if opts.title != "Alert" {
+        return false;
+    }
+    if !opts.line_numbers {
+        return false;
+    }
+    return true;
+}
+
+fn test_mcp_dispatch() -> Bool {
+    let init_req: String = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}";
+    let init_resp: String = handle_mcp_message(init_req);
+    if !str_contains(init_resp, "oofigure") || !str_contains(init_resp, "0.2.0") {
+        return false;
+    }
+
+    let list_req: String = "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}";
+    let list_resp: String = handle_mcp_message(list_req);
+    if !str_contains(list_resp, "figure_box") || !str_contains(list_resp, "figure_callout") {
+        return false;
+    }
+
+    let call_req: String = "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"figure_box\",\"arguments\":{\"text\":\"hello\",\"style\":\"rounded\"}}}";
+    let call_resp: String = handle_mcp_message(call_req);
+    if !str_contains(call_resp, "╭") || !str_contains(call_resp, "hello") {
+        return false;
+    }
+
+    return true;
+}
+
+pub fn run_ipc_tests() -> Bool {
+    if !test_json_parsing() {
+        return false;
+    }
+    if !test_cli_parsing() {
+        return false;
+    }
+    if !test_mcp_dispatch() {
+        return false;
+    }
+    return true;
+}

@@ -1,0 +1,132 @@
+// # Box and Callout Terminal Renderer
+//
+// Logline: Formats terminal boxes, callout panels, titled frames, and help diagnostics.
+//
+// Setup: Pure string assembly applying box style geometries and alignment parameters.
+//
+// Beats:
+//   1. Render top, middle, and bottom border frames.
+//   2. Embed optional titles into top horizontal border bars.
+//   3. Format callout alert panels with semantic headers and icons.
+//   4. Deliver CLI help, version, and interactive demo showcases.
+
+import "core/box_styles.oo";
+import "core/figure_engine.oo";
+import "core/callout_engine.oo";
+
+pub fn render_box(
+    lines: List[String],
+    style: BoxStyle,
+    title: String,
+    padding: Int,
+    align: String,
+    fixed_width: Int,
+    line_numbers: Bool
+) -> String {
+    let raw_w: Int = max_line_width(lines);
+    let title_len: Int = if chars_len(title) > 0 { chars_len(title) + 4 } else { 0 };
+    let mut inner_w: Int = if raw_w > title_len { raw_w } else { title_len };
+    if fixed_width > 0 && fixed_width > inner_w + 2 * padding {
+        inner_w = fixed_width - 2 * padding - 2;
+    }
+
+    let pad_str: String = repeat_glyph(" ", padding);
+    let total_horiz: Int = inner_w + 2 * padding;
+
+    let mut out: String = "";
+
+    // Top border
+    if chars_len(title) > 0 {
+        let t_banner: String = " " + title + " ";
+        let t_len: Int = chars_len(t_banner);
+        let rem_bar: Int = if total_horiz > t_len + 1 { total_horiz - t_len - 1 } else { 0 };
+        out = out + style.top_left + style.horizontal + t_banner + repeat_glyph(style.horizontal, rem_bar) + style.top_right + "\n";
+    } else {
+        out = out + style.top_left + repeat_glyph(style.horizontal, total_horiz) + style.top_right + "\n";
+    }
+
+    // Content lines
+    let n: Int = list_len(lines);
+    let mut i: Int = 0;
+    while i < n {
+        let raw_line: String = list_get(lines, i);
+        let line_content: String = if line_numbers {
+            let num_str: String = (i + 1).to_string();
+            let prefix: String = if i + 1 < 10 { " " + num_str + " │ " } else { num_str + " │ " };
+            prefix + raw_line
+        } else {
+            raw_line
+        };
+        let aligned: String = align_text_line(line_content, inner_w, align);
+        out = out + style.vertical + pad_str + aligned + pad_str + style.vertical + "\n";
+        i = i + 1;
+    }
+
+    // Bottom border
+    out = out + style.bot_left + repeat_glyph(style.horizontal, total_horiz) + style.bot_right + "\n";
+    return out;
+}
+
+pub fn render_callout(lines: List[String], meta: CalloutMeta, style: BoxStyle) -> String {
+    let title: String = format_callout_title(meta);
+    return render_box(lines, style, title, 1, "left", 0, false);
+}
+
+pub fn render_help() -> String {
+    return "oofigure 0.2.0 (openOODA sovereign terminal & rendering)\n"
+        + "usage: oofigure [options] [TEXT...]\n\n"
+        + "Renders beautiful Unicode box-drawing tables, callouts, and code borders.\n\n"
+        + "Options:\n"
+        + "  -s, --style <STYLE>   border style: rounded, single, double, heavy, ascii [default: rounded]\n"
+        + "  -t, --title <TITLE>   embed title into top border bar\n"
+        + "  -c, --callout <TYPE>  format as GFM alert: note, tip, important, warning, caution\n"
+        + "  -p, --padding <N>     inner horizontal padding in columns [default: 1]\n"
+        + "      --align <ALIGN>   text alignment: left, center, right [default: left]\n"
+        + "      --numbers         prepend line numbers inside panel\n"
+        + "  -w, --width <N>       fixed outer width (0 = auto-fit to content)\n"
+        + "  -j, --json            output figure geometry and lines as JSON\n"
+        + "  -D, --demo            render multi-style showcase and alert gallery\n"
+        + "      --test            execute internal subsystem verification suite\n"
+        + "      --mcp             run as Model Context Protocol JSON-RPC stdio server\n"
+        + "  -h, --help            display this help and exit\n"
+        + "  -v, --version         output version information and exit\n";
+}
+
+pub fn render_version() -> String {
+    return "oofigure 0.2.0 (openOODA sovereign terminal & rendering)\n"
+        + "License: Apache License 2.0 (zero ambient authority)\n"
+        + "Architecture: x86_64 / aarch64 native binary\n";
+}
+
+pub fn render_demo() -> String {
+    let mut out: String = "=== oofigure Sovereign Box Drawing Showcase ===\n\n";
+
+    let mut demo_lines: List[String] = list_new();
+    demo_lines = list_push(demo_lines, "Capability-Bounded Userland");
+    demo_lines = list_push(demo_lines, "100% Pure Native openOODA Code");
+
+    out = out + "1. Rounded Style (Default):\n"
+        + render_box(demo_lines, style_rounded(), "System Overview", 1, "center", 0, false) + "\n";
+
+    out = out + "2. Double Border Style:\n"
+        + render_box(demo_lines, style_double(), "Security Sandbox", 1, "left", 0, false) + "\n";
+
+    out = out + "3. Heavy Border Style:\n"
+        + render_box(demo_lines, style_heavy(), "Kernel Protocol", 1, "left", 0, false) + "\n";
+
+    out = out + "4. ASCII Fallback Style:\n"
+        + render_box(demo_lines, style_ascii(), "Compatibility Frame", 1, "left", 0, false) + "\n";
+
+    let mut tip_lines: List[String] = list_new();
+    tip_lines = list_push(tip_lines, "Always pass explicit capability tokens (&FsReadCap, &ProcessCap).");
+    tip_lines = list_push(tip_lines, "Zero ambient authority guarantees hermetic sandboxing.");
+    out = out + "5. GFM Tip Alert Callout:\n"
+        + render_callout(tip_lines, callout_tip(), style_rounded()) + "\n";
+
+    let mut warn_lines: List[String] = list_new();
+    warn_lines = list_push(warn_lines, "Direct filesystem writes without &FsWriteCap are rejected at compile time.");
+    out = out + "6. GFM Warning Alert Callout:\n"
+        + render_callout(warn_lines, callout_warning(), style_rounded()) + "\n";
+
+    return out;
+}

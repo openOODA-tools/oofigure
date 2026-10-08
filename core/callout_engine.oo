@@ -1,0 +1,83 @@
+// # Callout & Alert Subsystem
+//
+// Logline: GitHub/GFM alert metadata, semantic badge decorators, and callout styles.
+//
+// Setup: Pure metadata mappings linking callout categories to visual badges and icons.
+//
+// Beats:
+//   1. Declare CalloutMeta alert descriptor structure.
+//   2. Map standard GFM alert types (note, tip, important, warning, caution).
+//   3. Resolve callout metadata with standard note fallback.
+//   4. Format header titles with semantic icon badges.
+
+pub type CalloutMeta = struct {
+    kind: String,
+    badge: String,
+    icon: String,
+    ansi_color: String
+};
+
+pub fn callout_note() -> CalloutMeta {
+    return CalloutMeta {
+        kind: "note",
+        badge: "NOTE",
+        icon: "ℹ",
+        ansi_color: "\u001b[36m"
+    };
+}
+
+pub fn callout_tip() -> CalloutMeta {
+    return CalloutMeta {
+        kind: "tip",
+        badge: "TIP",
+        icon: "💡",
+        ansi_color: "\u001b[32m"
+    };
+}
+
+pub fn callout_important() -> CalloutMeta {
+    return CalloutMeta {
+        kind: "important",
+        badge: "IMPORTANT",
+        icon: "❗",
+        ansi_color: "\u001b[35m"
+    };
+}
+
+pub fn callout_warning() -> CalloutMeta {
+    return CalloutMeta {
+        kind: "warning",
+        badge: "WARNING",
+        icon: "⚠️",
+        ansi_color: "\u001b[33m"
+    };
+}
+
+pub fn callout_caution() -> CalloutMeta {
+    return CalloutMeta {
+        kind: "caution",
+        badge: "CAUTION",
+        icon: "🛑",
+        ansi_color: "\u001b[31m"
+    };
+}
+
+pub fn get_callout_meta(kind: String) -> CalloutMeta {
+    if kind == "tip" {
+        return callout_tip();
+    }
+    if kind == "important" {
+        return callout_important();
+    }
+    if kind == "warning" {
+        return callout_warning();
+    }
+    if kind == "caution" {
+        return callout_caution();
+    }
+    return callout_note();
+}
+
+pub fn format_callout_title(meta: CalloutMeta) -> String {
+    return meta.icon + " " + meta.badge;
+}

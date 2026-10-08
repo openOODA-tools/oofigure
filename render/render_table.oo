@@ -1,0 +1,150 @@
+// # Grid Table Terminal Renderer
+//
+// Logline: Formats multi-column text tables with box drawing borders and auto-sized columns.
+//
+// Setup: Pure layout computation formatting delimiter-separated rows into grid matrices.
+//
+// Beats:
+//   1. Parse comma-delimited row strings into individual cell tokens.
+//   2. Calculate maximum column width across all table rows.
+//   3. Format top, divider, and bottom border bars with junction glyphs.
+//   4. Deliver structured grid tables for CLI display and MCP consumption.
+
+import "core/box_styles.oo";
+import "core/figure_engine.oo";
+
+fn split_row_cells(row: String) -> List[String] {
+    let mut cells: List[String] = list_new();
+    let n: Int = chars_len(row);
+    let mut start: Int = 0;
+    let mut i: Int = 0;
+
+    while i < n {
+        if byte_at(row, i) == 44 { // comma
+            let cell: String = str_trim(str_slice(row, start, i));
+            cells = list_push(cells, cell);
+            start = i + 1;
+        }
+        i = i + 1;
+    }
+
+    if start <= n {
+        let last_cell: String = str_trim(str_slice(row, start, n));
+        cells = list_push(cells, last_cell);
+    }
+
+    return cells;
+}
+
+pub fn render_table(csv_rows: List[String], style: BoxStyle) -> String {
+    let num_rows: Int = list_len(csv_rows);
+    if num_rows == 0 {
+        return "";
+    }
+
+    let mut row_cells: List[List[String]] = list_new();
+    let mut num_cols: Int = 0;
+    let mut r_idx: Int = 0;
+
+    while r_idx < num_rows {
+        let raw_r: String = list_get(csv_rows, r_idx);
+        let cells: List[String] = split_row_cells(raw_r);
+        let c_len: Int = list_len(cells);
+        if c_len > num_cols {
+            num_cols = c_len;
+        }
+        row_cells = list_push(row_cells, cells);
+        r_idx = r_idx + 1;
+    }
+
+    if num_cols == 0 {
+        return "";
+    }
+
+    // Compute column widths
+    let mut col_widths: List[Int] = list_new();
+    let mut c_idx: Int = 0;
+    while c_idx < num_cols {
+        let mut max_cw: Int = 3;
+        let mut row_i: Int = 0;
+        while row_i < num_rows {
+            let cur_row: List[String] = list_get(row_cells, row_i);
+            if c_idx < list_len(cur_row) {
+                let cell_txt: String = list_get(cur_row, c_idx);
+                let txt_len: Int = chars_len(cell_txt);
+                if txt_len > max_cw {
+                    max_cw = txt_len;
+                }
+            }
+            row_i = row_i + 1;
+        }
+        col_widths = list_push(col_widths, max_cw);
+        c_idx = c_idx + 1;
+    }
+
+    let mut out: String = "";
+
+    // Top border
+    out = out + style.top_left;
+    let mut col_k: Int = 0;
+    while col_k < num_cols {
+        let cw: Int = list_get(col_widths, col_k);
+        out = out + repeat_glyph(style.horizontal, cw + 2);
+        if col_k + 1 < num_cols {
+            out = out + "┬";
+        }
+        col_k = col_k + 1;
+    }
+    out = out + style.top_right + "\n";
+
+    // Rows
+    let mut row_j: Int = 0;
+    while row_j < num_rows {
+        let current_cells: List[String] = list_get(row_cells, row_j);
+        out = out + style.vertical;
+        let mut col_m: Int = 0;
+        while col_m < num_cols {
+            let cell_content: String = if col_m < list_len(current_cells) {
+                list_get(current_cells, col_m)
+            } else {
+                ""
+            };
+            let cw: Int = list_get(col_widths, col_m);
+            let aligned_cell: String = align_text_line(cell_content, cw, "left");
+            out = out + " " + aligned_cell + " " + style.vertical;
+            col_m = col_m + 1;
+        }
+        out = out + "\n";
+
+        // Header divider after first row
+        if row_j == 0 && num_rows > 1 {
+            out = out + style.tee_left;
+            let mut col_d: Int = 0;
+            while col_d < num_cols {
+                let cw: Int = list_get(col_widths, col_d);
+                out = out + repeat_glyph(style.horizontal, cw + 2);
+                if col_d + 1 < num_cols {
+                    out = out + style.cross;
+                }
+                col_d = col_d + 1;
+            }
+            out = out + style.tee_right + "\n";
+        }
+        row_j = row_j + 1;
+    }
+
+    // Bottom border
+    out = out + style.bot_left;
+    let mut col_b: Int = 0;
+    while col_b < num_cols {
+        let cw: Int = list_get(col_widths, col_b);
+        out = out + repeat_glyph(style.horizontal, cw + 2);
+        if col_b + 1 < num_cols {
+            out = out + "┴";
+        }
+        col_b = col_b + 1;
+    }
+    out = out + style.bot_right + "\n";
+
+    return out;
+}
